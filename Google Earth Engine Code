@@ -1,0 +1,85 @@
+//Loading Landsat dataset
+var L8 = ee.ImageCollection('LANDSAT/LC08/C01/T1_TOA');
+
+//Choosing the time range
+var filtered = L8.filterDate('2020-01-01', '2021-01-31');
+
+//Removing cloudy and cloud shadow pixels
+var filtered1 = filtered.filterMetadata('CLOUD_COVER','less_than',2)
+
+//Defining Place 1
+
+var roi1 = ee.Geometry.Polygon([[75.45157492160797,30.634404129904425],
+[ 75.4524278640747,30.63372099804389],
+[75.45236885547638,30.634399514164798],
+[75.45157492160797,30.634404129904425]]);
+
+//Defining Place 2
+
+var roi2 = ee.Geometry.Polygon([[
+85.85622847080231, 26.09425078918021], [85.85590660572052, 26.093581136401006], 
+[85.85663080215454, 26.09337879451938 ], [85.85686147212981, 26.094009907326967], 
+[85.85622847080231, 26.09425078918021]
+]);
+      
+      
+//Defining Place 3
+
+var roi3 = ee.Geometry.Polygon([[
+78.66571158170699, 17.66869116558751], [78.6662346124649, 17.6686911655875], 
+[78.6662346124649, 17.66929686130703], [78.66571158170699, 17.66929686130703], 
+[78.66571158170699, 17.66869116558751]]);
+
+
+//Filtering based on Region of interest                  
+var place1 = filtered1.filterBounds(roi1);  
+var place2 = filtered1.filterBounds(roi2);  
+var place3 = filtered1.filterBounds(roi3);  
+
+
+
+//Function for Calculating MSAVI-2                  
+function addMSAVI(image) {
+    var nir = image.select(['B5']);
+    var red = image.select(['B4']);
+    var msavi2 = (nir.multiply(2).add(1).subtract(nir.multiply(2).add(1).pow(2).subtract(nir.subtract(red).multiply(8)).sqrt())).divide(2);
+    
+    return image.addBands(msavi2);
+        }
+
+//Preparing MSAVI-2
+var with_msavi2_1 = place1.map(addMSAVI);
+var with_msavi2_2 = place2.map(addMSAVI);
+var with_msavi2_3 = place3.map(addMSAVI);
+
+//Visualizing MSAVI2
+Map.addLayer(with_msavi2_1);
+Map.addLayer(with_msavi2_2);
+Map.addLayer(with_msavi2_3);
+
+
+// Producing time series charts
+
+var chart1 = ui.Chart.image.series({
+  imageCollection: with_msavi2_1.select('B5_1'),
+  region: roi1,
+  reducer: ee.Reducer.first(),
+  scale: 30
+}).setOptions({title: 'MSAVI-2 over time(Place 1)'});
+print(chart1);
+
+var chart2 = ui.Chart.image.series({
+  imageCollection: with_msavi2_2.select('B5_1'),
+  region: roi2,
+  reducer: ee.Reducer.first(),
+  scale: 30
+}).setOptions({title: 'MSAVI-2 over time(Place 2)'});
+print(chart2);
+
+var chart3 = ui.Chart.image.series({
+  imageCollection: with_msavi2_3.select('B5_1'),
+  region: roi3,
+  reducer: ee.Reducer.first(),
+  scale: 30
+}).setOptions({title: 'MSAVI-2 over time(Place 3)'});
+print(chart3);
